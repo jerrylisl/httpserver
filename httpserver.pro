@@ -17,7 +17,8 @@ SOURCES += \
     EventLoop.cpp \
     Epoll.cpp \
     Buffer.cpp \
-    Server.cpp
+    Server.cpp \
+    Optionloader.cpp
 
 HEADERS += \
     Mutex.h \
@@ -33,7 +34,8 @@ HEADERS += \
     Condition.h \
     Buffer.h \
     Base.h \
-    Setting.h
+    Setting.h \
+    Optionloader.h
 
 DISTFILES += \
     README.md

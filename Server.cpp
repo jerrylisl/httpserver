@@ -3,21 +3,54 @@
 
 #include <iostream>
 #include <cstdlib>
+#include<string>
+#include<vector>
 #include "Socket.h"
 #include "EventLoop.h"
 #include "EventLoopThread.h"
 #include "EventLoopThreadPool.h"
+#include "Optionloader.h"
 
+std::string Handler::_root = "/home/jerry/page/";
+std::string Parser::_tmp = "/home/jerry/page/tmp/";
+
+std::vector<std::string> Handler::_types {"", "html", "py"};
 
 
 int main(int argc, char **argv)
 {
     if(argc != 2)
     {
-        std::cout << "Usage: " << argv[0] << " <port>" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <optionfilepath>" << std::endl;
         return 0;
     }
-    int port = std::atoi(argv[1]);
+    std::string path = argv[1];
+
+    std::cout << "Start" << std::endl;
+
+    OptionLoader loader(path);
+    if (loader.LoadingOption())
+        exit(1);
+
+    if (loader.getRoot() != "")
+    {
+        Handler::_root = loader.getRoot();
+        Parser::_tmp = Handler::_root + "tmp/";
+    }
+    if (!loader.getFileTypes().empty())
+    {
+        Handler::_types = loader.getFileTypes();
+        Handler::_types.push_back("");
+    }
+
+    std::cout << Handler::_root << std::endl;
+
+
+
+
+
+
+
 
     
     int listenFd = Socket::createSocket();
@@ -26,7 +59,7 @@ int main(int argc, char **argv)
     memset(&servAddr, 0, sizeof(servAddr));
     servAddr.sin_family = AF_INET;
     servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servAddr.sin_port = htons(port);
+    servAddr.sin_port = htons(loader.getPort());
     Socket::Bind(listenFd, servAddr);
     Socket::Listen(listenFd);
 

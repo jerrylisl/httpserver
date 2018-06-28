@@ -7,6 +7,7 @@
 #include <iostream>
 #include <algorithm>
 #include <string.h>
+#include <fstream>
 
 // 解析请求后的数据存储在http_request结构体中
 struct HTTPRequest
@@ -23,13 +24,34 @@ class Parser
 public:
     explicit Parser(const std::string& request);
     HTTPRequest getParseResult();
+    std::string getParserContext()
+    {
+        return _context;
+    }
+    std::vector<std::string> getParameter()
+    {
+        return _postParameter;
+    }
+
+    static std::string _tmp;
+
 private:
     void parseLine();        // 将请求按行解析存入_lines数组中
     void parseRequestLine(); // 解析请求行
     void parseHeaders();     // 解析头部字段
+
+    void parsePost();
+
+    void parsePostWithSeparator();
+
+
     std::string _request;    // 客户的原始请求
     std::vector<std::string> _lines;
     HTTPRequest _parseResult;
+    std::string _context;
+    bool _hasSeparator;
+    std::string  _separator;
+    std::vector<std::string> _postParameter;
 };
 
 #endif // PARSER_H

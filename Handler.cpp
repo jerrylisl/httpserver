@@ -20,35 +20,24 @@ void Handler::handle()
         _isClosed = true;
         return;
     }
-    if(_request.method != "GET")
+    if(_request.method != "GET" && _request.method != "POST")
     {
         sendErrorMsg("501", "Not Implemented",
              "Server doesn't implement this method");
         return;
     }
     parseURI();
-    struct stat fileInfo;
-    if(stat(_fileName.c_str(), &fileInfo) < 0)
-    {
-#ifdef TEST
-        std::cout << "404 Not found: Server couldn't find this file." << std::endl;
-#endif
-        sendErrorMsg("404", "Not Found", "Server couldn't find this file");
+    auto res = checkFile();
+    //auto res = simpleCheckFile();
+    if (res != OK)
         return;
-    }
-    if(!(S_ISREG(fileInfo.st_mode)) || !(S_IRUSR & fileInfo.st_mode))
-    {
-#ifdef TEST
-        std::cout << "403 Forbidden: Server couldn't read this file." << std::endl;
-#endif
-        sendErrorMsg("403", "Forbidden", "Server couldn't read this file");
-        return;
-    }
+
+
     getFileType();
     std::string msg = "HTTP/1.1 200 OK\r\n";
     msg += "Server: Tiny Web Server\r\n";
-    msg += "Content-length: " + std::to_string(fileInfo.st_size) + "\r\n";
-    msg += "Content_type: " + _fileType + "\r\n\r\n";
+    //msg += "Content-length: " + std::to_string(_contextLen) + "\r\n";
+    msg += "Content-type: " + _fileType + "\r\n\r\n";
     _outputBuffer.append(msg.c_str(), msg.size());
     solveFile();
     if (close(_connfd) < 0)
@@ -59,15 +48,10 @@ void Handler::handle()
 
 void Handler::solveFile()
 {
-    if (_fileType == "text/html" ||
-            _fileType == "application/pdf" ||
-            _fileType == "image/png" ||
-            _fileType == "image/gif" ||
-            _fileType == "image/jpg" ||
-            _fileType == "image/jpeg" ||
-            _fileType ==  "test/css" ||
-            _fileType == "text/plain")
-        solveText();
+    if (_request.method == "POST")
+        solvePost();
+    else if (_request.method == "GET")
+        solveGet();
 
 }
 
@@ -76,13 +60,16 @@ bool Handler::receiveRequest()
     if(_inputBuffer.readFd(_connfd) == 0)
         return false;
     std::string request = _inputBuffer.readAllAsString();
-#ifdef TEST
-    std::cout << "---------------------------Request---------------------------" << std::endl;
-    std::cout << request << std::endl;
-    std::cout << "-------------------------------------------------------------" << std::endl;
-#endif
+
+    //std::cout << "---------------------------Request---------------------------" << std::endl;
+    //std::cout << request << std::endl;
+   // std::cout << "-------------------------------------------------------------" << std::endl;
+
+    //std::cout << request << std::endl;
     Parser p(request);
     _request = p.getParseResult();
+    _parameter = p.getParameter();
+    //std::cout << p.getParserContext() << std::endl;
     return true;
 }
 
@@ -105,11 +92,80 @@ void Handler::sendErrorMsg(const std::string &errorNum,
 
 void Handler::parseURI()
 {
-    _fileName = root;
+    _wholeName = _root;
     if(_request.uri == "/")
-        _fileName += "/home.html";
+        _fileName += "home.html";
     else
-        _fileName += _request.uri;
+        _fileName = _request.uri.substr(1);
+    _wholeName += _fileName;
+}
+
+Handler::FILESTAT Handler::checkFile()
+{
+    if (_request.uri == "/")
+        _request.uri += "home";
+    DIR *dp;                      // 定义子目录流指针
+    struct dirent *entry;         // 定义dirent结构指针保存后续目录
+    if((dp = opendir(_root.c_str())) == NULL) // 打开目录，获取子目录流指针，判断操作是否成功
+    {
+        std::cout << "can't open the root dirction" << std::endl;
+        return DIRERR;
+    }
+    Handler::FILESTAT res = FOUNDERR;
+
+    while((entry = readdir(dp)) != NULL)  // 获取下一级目录信息，如果未否则循环
+    {
+        if (strstr(entry->d_name, _fileName.c_str()) != NULL)
+        {
+            _fileName = entry->d_name;
+            _wholeName = _root + _fileName;
+        }
+        if (strcmp(entry->d_name, _fileName.c_str()) == 0)
+        {
+            res = OK;
+            struct stat fileInfo;
+            //std::cout << _wholeName << std::endl;
+            stat(_wholeName.c_str(), &fileInfo);
+            if(!(S_ISREG(fileInfo.st_mode)) || !(S_IRUSR & fileInfo.st_mode))
+            {
+                res = MODEERR;
+                break;
+            }
+
+            _request.uri = entry->d_name;
+
+            if (_request.uri.find('.') != std::string::npos)
+            {
+                _requestFileType = _request.uri.substr(_request.uri.find('.') + 1);
+                if (find(_types.begin(), _types.end(), _requestFileType) == _types.end())
+                    res = TYPEERR;
+            }
+            else
+                _requestFileType = "";
+            break;
+        }
+
+    }
+    closedir(dp);    // 关闭子目录流
+    return res;
+}
+
+Handler::FILESTAT Handler::simpleCheckFile()
+{
+    struct stat fileInfo;
+    if(stat(_wholeName.c_str(), &fileInfo) < 0)
+    {
+        std::cout << "404 Not found: Server couldn't find this file." << std::endl;
+        sendErrorMsg("404", "Not Found", "Server couldn't find this file");
+        return FOUNDERR;
+    }
+    if(!(S_ISREG(fileInfo.st_mode)) || !(S_IRUSR & fileInfo.st_mode))
+    {
+        std::cout << "403 Forbidden: Server couldn't read this file." << std::endl;
+        sendErrorMsg("403", "Forbidden", "Server couldn't read this file");
+        return MODEERR;
+    }
+    return OK;
 }
 
 void Handler::getFileType()
@@ -130,15 +186,79 @@ void Handler::getFileType()
     else if(strstr(name, ".css"))
         _fileType = "test/css";
     else
-        _fileType = "text/plain";
+        _fileType = "text/html";
+}
+
+void Handler::solveGet()
+{
+    if (_requestFileType == "py")
+        solvePy();
+    else
+        solveText();
+}
+
+void Handler::solvePost()
+{
+    if (_requestFileType == "py")
+    {
+        if (_parameter.empty())
+            solvePy();
+        else
+            solvePywithParameter();
+    }
+    else
+        solveText();
 }
 
 void Handler::solveText()
 {
-    int fd = open(_fileName.c_str(), O_RDONLY, 0);
-    _outputBuffer.readFd(fd);
+    int fd = open(_wholeName.c_str(), O_RDONLY, 0);
+    _contextLen = _outputBuffer.readFd(fd);
+    //std::cout << _outputBuffer.readAllAsString() << std::endl;
     _outputBuffer.sendFd(_connfd);
     if (close(fd) < 0)
         std::cout << "close error" << strerror(errno) << std::endl;
+}
+
+void Handler::solvePy()
+{
+    int p[2];
+    pipe(p);
+    std::string command = "python " + _wholeName;
+    int old_fd = dup(STDOUT_FILENO);
+    dup2(p[1], STDOUT_FILENO);
+    close(p[1]);
+    system(command.c_str());
+    dup2(old_fd, STDOUT_FILENO);
+    close(old_fd);
+    _contextLen = _outputBuffer.readFd(p[0]);
+    //std::cout << _outputBuffer.readAllAsString() << std::endl;
+    _outputBuffer.sendFd(_connfd);
+    close(p[0]);
+}
+
+void Handler::solvePywithParameter()
+{
+    int p[2];
+    pipe(p);
+    std::string para = "\"";
+    for (int i = 0; i < _parameter.size(); ++ i)
+    {
+        if (i != 0)
+        para += '&';
+        para += _parameter[i];
+    }
+    para += "\"";
+    std::string command = "python " + _wholeName + " " + para;
+    int old_fd = dup(STDOUT_FILENO);
+    dup2(p[1], STDOUT_FILENO);
+    close(p[1]);
+    system(command.c_str());
+    dup2(old_fd, STDOUT_FILENO);
+    close(old_fd);
+    _contextLen = _outputBuffer.readFd(p[0]);
+    //std::cout << _outputBuffer.readAllAsString() << std::endl;
+    _outputBuffer.sendFd(_connfd);
+    close(p[0]);
 }
 
