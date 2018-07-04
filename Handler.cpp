@@ -40,9 +40,12 @@ void Handler::handle()
     msg += "Content-type: " + _fileType + "\r\n\r\n";
     _outputBuffer.append(msg.c_str(), msg.size());
     solveFile();
-    if (close(_connfd) < 0)
-        std::cout << "close error" << strerror(errno) << std::endl;
-    _isClosed = true;
+    if (_request.connection != "keep-alive")
+    {
+        if (close(_connfd) < 0)
+            std::cout << "close error" << strerror(errno) << std::endl;
+        _isClosed = true;
+    }
 
 }
 

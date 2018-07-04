@@ -23,7 +23,7 @@ public:
     {
         std::string str(begin() + _readIndex, readableBytes());
         resetBuffer();
-        return str;
+        return std::move(str);
     }
     void append(const char *data, const size_t len)
     {

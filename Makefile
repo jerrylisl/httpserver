@@ -1,5 +1,5 @@
 httpserver: Server.o Socket.o EventLoopThreadPool.o EventLoopThread.o Thread.o EventLoop.o Parser.o Handler.o Epoll.o Buffer.o Optionloader.o
-	g++ -std=c++11 -pthread -o httpserver Server.o Socket.o EventLoopThreadPool.o EventLoopThread.o Thread.o EventLoop.o Parser.o Handler.o Epoll.o Buffer.o Optionloader.o
+	g++ -std=c++11 -O3 -pthread -o httpserver Server.o Socket.o EventLoopThreadPool.o EventLoopThread.o Thread.o EventLoop.o Parser.o Handler.o Epoll.o Buffer.o Optionloader.o
 
 Server.o: Server.cpp Socket.h EventLoopThreadPool.h EventLoopThread.h EventLoop.h
 
