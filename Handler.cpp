@@ -27,8 +27,8 @@ void Handler::handle()
         return;
     }
     parseURI();
-    auto res = checkFile();
-    //auto res = simpleCheckFile();
+    //auto res = checkFile();
+    auto res = simpleCheckFile();
     if (res != OK)
         return;
 
@@ -55,6 +55,8 @@ void Handler::solveFile()
         solvePost();
     else if (_request.method == "GET")
         solveGet();
+    else if (_request.method == "PUT")
+        solvePut();
 
 }
 
@@ -134,6 +136,7 @@ Handler::FILESTAT Handler::checkFile()
                 res = MODEERR;
                 break;
             }
+            _fileSize = fileInfo.st_size;
 
             _request.uri = entry->d_name;
 
@@ -168,6 +171,7 @@ Handler::FILESTAT Handler::simpleCheckFile()
         sendErrorMsg("403", "Forbidden", "Server couldn't read this file");
         return MODEERR;
     }
+    _fileSize = fileInfo.st_size;
     return OK;
 }
 
@@ -213,12 +217,20 @@ void Handler::solvePost()
         solveText();
 }
 
+void Handler::solvePut()
+{
+
+}
+
 void Handler::solveText()
 {
+    //struct stat fileInfo;
+    //stat(_wholeName.c_str(), &fileInfo);
     int fd = open(_wholeName.c_str(), O_RDONLY, 0);
-    _contextLen = _outputBuffer.readFd(fd);
+    //_contextLen = _outputBuffer.readFd(fd);
     //std::cout << _outputBuffer.readAllAsString() << std::endl;
     _outputBuffer.sendFd(_connfd);
+    sendfile(_connfd, fd, NULL, _fileSize);
     if (close(fd) < 0)
         std::cout << "close error" << strerror(errno) << std::endl;
 }
@@ -263,5 +275,56 @@ void Handler::solvePywithParameter()
     //std::cout << _outputBuffer.readAllAsString() << std::endl;
     _outputBuffer.sendFd(_connfd);
     close(p[0]);
+}
+
+void Handler::solvePhp()
+{
+    int p[2];
+    pipe(p);
+    std::string command = "php " + _wholeName;
+    int old_fd = dup(STDOUT_FILENO);
+    dup2(p[1], STDOUT_FILENO);
+    close(p[1]);
+    system(command.c_str());
+    dup2(old_fd, STDOUT_FILENO);
+    close(old_fd);
+    _contextLen = _outputBuffer.readFd(p[0]);
+    //std::cout << _outputBuffer.readAllAsString() << std::endl;
+    _outputBuffer.sendFd(_connfd);
+    close(p[0]);
+}
+
+void Handler::solvePhpwithParameter()
+{
+    int p[2];
+    pipe(p);
+    std::string para = "\"";
+    for (int i = 0; i < _parameter.size(); ++ i)
+    {
+        if (i != 0)
+        para += '&';
+        para += _parameter[i];
+    }
+    para += "\"";
+    std::string command = "php " + _wholeName + " " + para;
+    int old_fd = dup(STDOUT_FILENO);
+    dup2(p[1], STDOUT_FILENO);
+    close(p[1]);
+    system(command.c_str());
+    dup2(old_fd, STDOUT_FILENO);
+    close(old_fd);
+    _contextLen = _outputBuffer.readFd(p[0]);
+    //std::cout << _outputBuffer.readAllAsString() << std::endl;
+    _outputBuffer.sendFd(_connfd);
+    close(p[0]);
+}
+
+std::string Handler::makeHeader()
+{
+    std::string msg = "HTTP/1.1 200 OK\r\n";
+    msg += "Server: Tiny Web Server\r\n";
+    //msg += "Content-length: " + std::to_string(_contextLen) + "\r\n";
+    msg += "Content-type: " + _fileType + "\r\n\r\n";
+    return msg;
 }
 

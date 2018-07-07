@@ -32,9 +32,9 @@ void EventLoop::loop()
 
     while(!isQuit)
     {
-#ifdef TEST
-        std::cout << "----------Looping----------" << std::endl;
-#endif
+
+        //std::cout << "----------Looping----------" << std::endl;
+
         addToLoop();
         std::vector<Handler*> activeEvents;
         activeEvents.clear();
@@ -42,9 +42,9 @@ void EventLoop::loop()
         for(std::vector<Handler*>::iterator iter = activeEvents.begin();
             iter != activeEvents.end(); ++iter)
         {
-#ifdef TEST
-            std::cout << "----------Handle request----------" << std::endl;
-#endif
+
+            //std::cout << "----------Handle request----------" << std::endl;
+
             (*iter)->handle();
             e->removeFd((*iter)->connFd());
             delete *iter;
@@ -61,9 +61,8 @@ void EventLoop::quit()
 
 void EventLoop::addToLoop(const int fd)
 {
-#ifdef TEST
-    std::cout << "----------Add " << fd << " to loop----------" << std::endl;
-#endif
+
+    //std::cout << "----------Add " << fd << " to loop----------" << std::endl;
     {
         MutexLock lock(_mutex);
         fds.push_back(fd);

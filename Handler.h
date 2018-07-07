@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <sys/sendfile.h>
 #include "Parser.h"
 #include "Buffer.h"
 
@@ -50,9 +51,17 @@ private:
 
     void solvePost();
 
+    void solvePut();
+
     void solveText();
+
+    std::string makeHeader();
+
     void solvePy();
     void solvePywithParameter();
+
+    void solvePhp();
+    void solvePhpwithParameter();
 
     int _connfd;
     bool _isClosed;
@@ -62,6 +71,7 @@ private:
     std::string _requestFileType;  //这个是请求文件的文件类型
     Buffer _inputBuffer;
     Buffer _outputBuffer;
+    size_t _fileSize;
     HTTPRequest _request;
     int _contextLen;
     std::string _context;

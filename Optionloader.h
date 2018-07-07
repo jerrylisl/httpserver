@@ -22,6 +22,10 @@ class OptionLoader : Noncopyable
 public:
     explicit OptionLoader(std::string path)
         :_path(path) {}
+
+    OptionLoader() {}
+    void addOptionPath(std::string path);
+
     bool LoadingOption();
 
     std::string getHost()

@@ -1,5 +1,12 @@
 #include"Optionloader.h"
 
+void OptionLoader::addOptionPath(std::string path)
+{
+    if (_path == "")
+        _path = path;
+    else
+        std::cout << "Wrong Add, this loader alread had a path" << std::endl;
+}
 
 bool OptionLoader::LoadingOption()
 {
@@ -30,7 +37,7 @@ bool OptionLoader::addOption(std::string key, std::string value)
         _options.port = atoi(value.c_str());
     else if (key == "root")
         _options.root = value;
-    else if (key == "pthreadNum")
+    else if (key == "threadNum")
         _options.threadNum = atoi(value.c_str());
     else if (key == "fileType")
         _options.fileTypes.push_back(value);

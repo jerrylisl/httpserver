@@ -18,7 +18,8 @@ SOURCES += \
     Epoll.cpp \
     Buffer.cpp \
     Server.cpp \
-    Optionloader.cpp
+    Optionloader.cpp \
+    httpserver.cpp
 
 HEADERS += \
     Mutex.h \
@@ -35,7 +36,8 @@ HEADERS += \
     Buffer.h \
     Base.h \
     Setting.h \
-    Optionloader.h
+    Optionloader.h \
+    Server.h
 
 DISTFILES += \
     README.md

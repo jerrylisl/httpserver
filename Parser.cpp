@@ -21,7 +21,7 @@ void Parser::parseLine()
 {
     std::string::size_type lineBegin = 0;   // 正在解析的行的行首索引
     std::string::size_type checkIndex = 0;  // 正在解析的字符索引
-    std::cout << _request << std::endl;
+    //std::cout << _request << std::endl;
     bool head = true;
     while(head && checkIndex < _request.size())
     {
